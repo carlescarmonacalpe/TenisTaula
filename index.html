@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torneig de Tenis Taula</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Torneig de Tenis Taula</h1>
+
+        <!-- Formulario para añadir jugadores -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Afegir Jugador</h5>
+                <button id="resetBtn" class="btn btn-danger btn-sm">Reset</button>
+            </div>
+            <div class="card-body">
+                <form id="addPlayerForm">
+                    <div class="mb-3">
+                        <label for="playerName" class="form-label">Nom del Jugador</label>
+                        <input type="text" class="form-control" id="playerName" placeholder="Introdueix el nom del jugador" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Afegir Jugador</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista de jugadores -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>LLista jugadors</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group" id="playerList">
+                    <!-- Los jugadores añadidos aparecerán aquí -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Generar Partidas -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Properes partides</h5>
+            </div>
+            <div class="card-body">
+                <button id="generateMatchesBtn" class="btn btn-success">Generar Partides</button>
+                <ul class="list-group mt-3" id="matchList">
+                    <!-- Las partidas generadas aparecerán aquí -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tabla de resultados -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Partides jugades</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Partida</th>
+                            <th>Resultat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playedMatchesBody">
+                        <!-- Los resultados se agregarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Formulario para introducir resultados -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Introduir Resultats</h5>
+            </div>
+            <div class="card-body">
+                <form id="playedMatchesForm" >
+                    <div class="mb-3">
+                        <label for="matchSelector" class="form-label">Partida</label>
+                        <select id="matchSelector" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="result" class="form-label">Resultat</label>
+                        <input type="text" class="form-control" id="result" placeholder="Exemple: 7-3" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Registrar Resultat</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabla de resultados -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Classificació</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Jugador</th>
+                            <th>Partides guanyades</th>
+                            <th>Partides empatades</th>
+                            <th>Punts guanyats</th>
+                            <th>Punts perduts</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- Los resultados se agregarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        const playerNameInput = document.getElementById('playerName');
+        const addPlayerForm = document.getElementById('addPlayerForm');
+        const playerList = document.getElementById('playerList');
+        const matchList = document.getElementById('matchList');
+        const generateMatchesBtn = document.getElementById('generateMatchesBtn');
+        const playedMatchesForm = document.getElementById('playedMatchesForm');
+        const matchSelector = document.getElementById('matchSelector');
+        const resultInput = document.getElementById('result');
+        const playedMatchesBody = document.getElementById('playedMatchesBody');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let players = JSON.parse(localStorage.getItem('players')) || [];
+        let matches = JSON.parse(localStorage.getItem('matches')) || [];
+        let ongoingMatches = JSON.parse(localStorage.getItem('ongoingMatches')) || [];
+        let playedMatches = JSON.parse(localStorage.getItem('playedMatches')) || [];
+
+        // Load saved players and matches on page load
+        renderMatches();
+        renderPlayerList();
+        renderPlayedMatches();
+        updateMatchSelector();
+        renderResults();
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('players', JSON.stringify(players));
+            localStorage.setItem('matches', JSON.stringify(matches));
+            localStorage.setItem('playedMatches', JSON.stringify(playedMatches));
+            localStorage.setItem('ongoingMatches', JSON.stringify(ongoingMatches));
+        }
+
+        // Reset functionality
+        resetBtn.addEventListener('click', function() {
+            if (confirm('¿Vols reiniciar les dades?')) {
+                localStorage.clear();
+                players = [];
+                matches = [];
+                playedMatches = [];
+                renderPlayerList();
+                renderMatches();
+                playedMatchesBody.innerHTML = '';
+                //playedMatchesForm.style.display = 'none';
+                alert('Reiniciat.');
+                generateMatchesBtn.style.display = 'block'
+            }
+        });
+
+        // Function to add a player
+        addPlayerForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const playerName = playerNameInput.value.trim();
+            if (playerName) {
+                players.push(playerName);
+                saveData();
+                renderPlayerList();
+                playerNameInput.value = '';
+            }
+        });
+
+        // Render player list
+        function renderPlayerList() {
+            playerList.innerHTML = '';
+            players.forEach((player, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.textContent = player;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger btn-sm';
+                deleteBtn.textContent = 'Eliminar';
+                deleteBtn.onclick = function () {
+                    removePlayer(index);
+                };
+
+                li.appendChild(deleteBtn);
+                playerList.appendChild(li);
+            });
+        }
+
+        // Remove a player
+        function removePlayer(index) {
+            players.splice(index, 1);
+            saveData();
+            renderPlayerList();
+        }
+
+        // Generate matches
+        generateMatchesBtn.addEventListener('click', function () {
+            matches = [];
+            matchList.innerHTML = '';
+            matchSelector.innerHTML = '';
+            const totalPlayers = players.length;
+
+            if (totalPlayers < 2) {
+                alert('Necesitas al menos 2 jugadores para generar partidas.');
+                return;
+            }
+
+            const shuffledPlayers = players.sort();
+            for (let i = 0; i < shuffledPlayers.length; i += 2) {
+                if (i + 1 < shuffledPlayers.length) {
+                    const match = `${shuffledPlayers[i]} vs ${shuffledPlayers[i + 1]}`;
+                    matches.push(match);
+                    ongoingMatches.push(match);
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = match;
+                    matchList.appendChild(li);
+                }
+            }
+            generateMatchesBtn.style.display = 'none'
+            playedMatchesForm.style.display = 'block';
+            saveData();
+            updateMatchSelector();
+        });
+
+        // Update match selector
+        function updateMatchSelector() {
+            matchSelector.innerHTML = '';
+            matches.forEach((match, index) => {
+                console.log(match)
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = match;
+                matchSelector.appendChild(option);
+            });
+        }
+
+        // Register results
+        playedMatchesForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const matchIndex = matchSelector.value;
+            const result = resultInput.value.trim();
+            if (result) {
+                playedMatches.push({ match: matches[matchIndex], result: result });
+                alert(`Resultado registrado para ${matches[matchIndex]}: ${result}`);
+                resultInput.value = '';
+                const playedMatch = matches[matchIndex];
+                matches.splice(matchIndex, 1);
+                ongoingMatches.splice(ongoingMatches.indexOf(playedMatch), 1);
+                saveData();
+                renderMatches();
+                renderPlayedMatches();
+                updateMatchSelector();
+                checkForNewMatches();
+            }
+        });
+
+        function checkForNewMatches() {
+            // Obtener los jugadores que están ocupados
+            const busyPlayers = ongoingMatches.flatMap(match => match.split(' vs '));
+            // Filtrar jugadores que están disponibles
+            const availablePlayers = players.filter(player => !busyPlayers.includes(player));
+
+            // Generar posibles nuevas partida
+            availablePlayers.sort();
+            var possibleMatches = availablePlayers.reduce( (acc, v, i) =>
+                acc.concat(availablePlayers.slice(i+1).map( w => v + ' vs ' + w )),
+            []);
+
+
+            while (possibleMatches.length > 0) {
+                const match = possibleMatches.shift();
+                if (!playedMatches.some(result => result.match === match)) {
+                    matches.push(match);
+                    ongoingMatches.push(match); // Añadir a las partidas en curso
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = match;
+                    matchList.appendChild(li);
+
+                    // Remove from possible matches all the matches that include the players
+                    const playersInMatch = match.split(' vs ');
+                    possibleMatches = possibleMatches.filter(match => 
+                        !playersInMatch.some(name => match.includes(name))
+                    );
+                }
+                else {
+                    //remove from possible matches
+                    possibleMatches = possibleMatches.filter(m => m !== match);
+                }
+            }
+            renderPlayedMatches();
+            renderResults();
+            updateMatchSelector(); // Actualizar el selector de partidas
+            saveData();
+        }
+
+        function renderPlayedMatches() {
+            playedMatchesBody.innerHTML = '';
+            playedMatches.forEach((match) => {
+                const resultRow = document.createElement('tr');
+                const matchCell = document.createElement('td');
+                matchCell.textContent = match["match"];
+                const resultCell = document.createElement('td');
+                resultCell.textContent = match["result"];;
+
+                resultRow.appendChild(matchCell);
+                resultRow.appendChild(resultCell);
+                playedMatchesBody.appendChild(resultRow);
+            });
+        }
+        // Render remaining matches
+        function renderMatches() {
+            matchList.innerHTML = '';
+            matches.forEach((match) => {
+                console.log("CCCA"+match)
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = match;
+                matchList.appendChild(li);
+                //generateMatchesBtn.style.display = 'none'
+            });
+        }
+
+        // Render results
+        function renderResults() {
+            resultsBody.innerHTML = '';
+            const results = {}
+            playedMatches.forEach((match) => {
+                const players = match["match"].split(" vs ");
+                const scores = match["result"].split("-")
+                console.log(players)
+                console.log(scores)
+
+                for (let i = 0; i < players.length; i++) {
+                    if(players[i] in results){
+                        results[players[i]]["favor"] += parseInt(scores[i]);
+                        if(i==0){
+                            results[players[i]]["contra"] += parseInt(scores[i+1]);
+                            if(parseInt(scores[i]) > parseInt(scores[i+1])){
+                                results[players[i]]["guanyades"] +=1
+                            }
+                            if(parseInt(scores[i]) == parseInt(scores[i+1])){
+                                results[players[i]]["empatades"] +=1
+                            }
+                        }
+                        else{
+                            results[players[i]]["contra"] += parseInt(scores[i-1]);
+                            
+                            if(parseInt(scores[i-1]) < parseInt(scores[i])){
+                                results[players[i]]["guanyades"] +=1
+                            }
+                            
+                            if(parseInt(scores[i-1]) == parseInt(scores[i])){
+                                results[players[i]]["empatades"] +=1
+                            }
+                        }
+                        
+                    }
+                    else{
+                        results[players[i]] = {"favor":0, "guanyades":0, "contra":0, "empatades": 0}
+                        results[players[i]]["favor"] = parseInt(scores[i]);
+                        if(i==0){
+                            results[players[i]]["contra"] = parseInt(scores[i+1]);
+                            if(parseInt(scores[i]) > parseInt(scores[i+1])){
+                                results[players[i]]["guanyades"] = 1
+                            }
+                            
+                            if(parseInt(scores[i]) == parseInt(scores[i+1])){
+                                results[players[i]]["empatades"] = 1
+                            }
+                        }
+                        else{
+                            results[players[i]]["contra"] = parseInt(scores[i-1]);
+                            if(parseInt(scores[i-1]) < parseInt(scores[i])){
+                                results[players[i]]["guanyades"] = 1
+                            }
+                            
+                            if(parseInt(scores[i]) == parseInt(scores[i-1])){
+                                results[players[i]]["empatades"] = 1
+                            }
+                        }
+                        
+                    }
+                }
+                console.log(results)
+
+            });
+
+            const sortedByGuanyades = Object.entries(results).sort(([, a], [, b]) => b.guanyades - a.guanyades || b.favor - a.favor);
+
+            // Convert back to an object if needed
+            const sortedPlayerStats = Object.fromEntries(sortedByGuanyades);
+
+            for (const [player, stats] of Object.entries(sortedPlayerStats)) {
+                const resultRow = document.createElement('tr');
+                const matchCell = document.createElement('td');
+                matchCell.textContent = player;
+                const guanyades = document.createElement('td');
+                guanyades.textContent = stats["guanyades"];
+                const empatades = document.createElement('td');
+                empatades.textContent = stats["empatades"];
+                const puntsfavor = document.createElement('td');
+                puntsfavor.textContent = stats["favor"];
+                const puntscontra = document.createElement('td');
+                puntscontra.textContent = stats["contra"];
+
+                resultRow.appendChild(matchCell);
+                resultRow.appendChild(guanyades);
+                resultRow.appendChild(empatades);
+                resultRow.appendChild(puntsfavor);
+                resultRow.appendChild(puntscontra);
+                resultsBody.appendChild(resultRow);
+
+            }
+        }
+    </script>
+</body>
+
+</html>
